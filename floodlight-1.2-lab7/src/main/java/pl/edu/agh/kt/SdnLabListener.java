@@ -1,11 +1,14 @@
 package pl.edu.agh.kt;
 
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.TCP;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import net.floodlightcontroller.core.FloodlightContext;
@@ -16,8 +19,10 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
+
+import net.floodlightcontroller.packet.IPv4;
+
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import java.util.ArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +31,11 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 
 	protected IFloodlightProviderService floodlightProvider;
 	protected static Logger logger;
+
+	Map<String, Integer> impostorScore = new HashMap<String, Integer>();
+	Map<String, List> impostorLast10Ports = new HashMap<String, List>();
+	Map<String, List> impostorLast10DestIps = new HashMap<String, List>();
+
 
 	@Override
 	public String getName() {
@@ -49,9 +59,42 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 			FloodlightContext cntx) {
 
 		logger.info("************* NEW PACKET IN *************");
-//		PacketExtractor extractor = new PacketExtractor();
-//		extractor.packetExtract(cntx);
+		PacketExtractor extractor = new PacketExtractor();
+		extractor.packetExtract(cntx);
 
+		Ethernet eth = extractor.getEth();
+		if (eth.getEtherType() == EthType.IPv4) {
+			IPv4 ipv4 = (IPv4) eth.getPayload();
+			if (ipv4.getProtocol() == IpProtocol.TCF) {
+				TCP tcp = (TCP) ipv4.getPayload();
+				String src_ip = ipv4.getSourceAddress().toString();
+				String dst_ip = ipv4.getDestinationAddress().toString();
+				int dst_port = tcp.getDestinationPort().getPort();
+				if (impostorScore.containsKey(src_ip)) {
+					impostorLast10DestIps.get(src_ip).add(dst_ip);
+					impostorLast10Ports.get(src_ip).add(dst_port);
+					if (maliciousPort(dst_port)){
+						impostorScore.put(src_ip, impostorScore.get(src_ip)+1);
+					}
+					if (impostorLast10Ports.get(src_ip).size() == 10){
+						List<Integer> newPortsList = impostorLast10Ports.get(src_ip).subList(1, 10);
+						newPortsList.add(dst_port);
+						impostorLast10Ports.put(src_ip,newPortsList);
+						List<String> newIPsList = impostorLast10DestIps.get(src_ip).subList(1, 10);
+						newIPsList.add(dst_ip);
+						impostorLast10Ports.put(src_ip,newIPsList);
+					}
+				} else {
+					impostorScore.put(src_ip, 0);
+					List<String> lastIps = new ArrayList<>();
+					lastIps.add(dst_ip);
+					impostorLast10DestIps.put(src_ip, lastIps);
+					List<Integer> lastPorts = new ArrayList<>();
+					lastPorts.add(dst_port);
+					impostorLast10Ports.put(src_ip, lastPorts);
+				}
+			}
+		}
 		// TODO LAB 6
 		OFPacketIn pin = (OFPacketIn) msg;
 		OFPort outPort = OFPort.of(0);
@@ -62,6 +105,10 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 		Flows.simpleAdd(sw, pin, cntx, outPort);
 
 		return Command.STOP;
+	}
+
+	private boolean maliciousPort(int dst_port) {
+		return true;
 	}
 
 	@Override

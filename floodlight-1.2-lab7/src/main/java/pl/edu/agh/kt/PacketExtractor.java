@@ -56,6 +56,11 @@ public class PacketExtractor {
 
 	}
 
+	public Ethernet getEth() { 
+		eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+		return eth;
+	}
+
 	public void extractArp() {
 		logger.info("ARP extractor");
 	}
