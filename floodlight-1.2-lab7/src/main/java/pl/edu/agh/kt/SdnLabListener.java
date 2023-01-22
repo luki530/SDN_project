@@ -56,7 +56,7 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 
 	@Override
 	public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg,
-			FloodlightContext cntx) {
+																   FloodlightContext cntx) {
 
 		logger.info("************* NEW PACKET IN *************");
 		PacketExtractor extractor = new PacketExtractor();
@@ -72,7 +72,7 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 				int dst_port = tcp.getDestinationPort().getPort();
 				if (impostorScore.containsKey(src_ip)) {
 					if (maliciousPort(dst_port)){
-						impostorScore.put(src_ip, impostorScore.get(src_ip)+1);
+						impostorScore.put(src_ip, impostorScore.get(src_ip) + 1);
 					}
 					if (impostorLast10Ports.get(src_ip).size() == 10){
 						List<Integer> newPortsList = impostorLast10Ports.get(src_ip).subList(1, 10);
@@ -81,6 +81,15 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 						List<String> newIPsList = impostorLast10DestIps.get(src_ip).subList(1, 10);
 						newIPsList.add(dst_ip);
 						impostorLast10Ports.put(src_ip,newIPsList);
+
+						HashSet<Integer> set_port = new HashSet<>(impostorLast10Ports.get(src_ip));
+						HashSet<Integer> set_ip = new HashSet<>(impostorLast10DestIps.get(src_ip));
+						if (set_port.size() >= 8){
+							impostorScore.put(src_ip, impostorScore.get(src_ip) + 3);
+						}
+						if (set_ip.size() >= 7) {
+							impostorScore.put(src_ip, impostorScore.get(src_ip) + 4);
+						}
 					} else {
 						impostorLast10DestIps.get(src_ip).add(dst_ip);
 						impostorLast10Ports.get(src_ip).add(dst_port);
@@ -94,16 +103,26 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 					lastPorts.add(dst_port);
 					impostorLast10Ports.put(src_ip, lastPorts);
 				}
+				OFPacketIn pin = (OFPacketIn) msg;
+				if (impostorScore.get(src_ip) < 10){
+					Flows.simpleAdd(sw, pin, cntx, OFPort.FLOOD);
+				}
+				return Command.STOP;
 			}
+
 		}
 
-		OFPacketIn pin = (OFPacketIn) msg;
-		Flows.simpleAdd(sw, pin, cntx, pin.getInPort());
 
+		OFPacketIn pin = (OFPacketIn) msg;
+		Flows.simpleAdd(sw, pin, cntx, OFPort.FLOOD);
 		return Command.STOP;
 	}
 
 	private boolean maliciousPort(int dst_port) {
+		int knownPorts[] ={ 80, 23, 443, 21, 22, 25, 3389, 110, 445, 139, 143, 53, 135, 3306, 8080, 1723, 111, 995,
+				993, 5900, 1025, 587, 8888, 199, 1720, 465, 548, 113, 81, 6001, 10000, 514, 5060, 179, 1026, 2000, 8443, 8000, 32768, 554, 26, 1433, 49152, 2001, 515, 8008, 49154, 1027, 5666, 646, 5000, 5631, 631, 49153, 8081, 2049, 88, 79, 5800, 106, 2121, 1110, 49155, 6000, 513, 990, 5357, 427, 49156, 543, 544, 5101, 144, 7, 389, 8009, 3128, 444, 9999, 5009, 7070, 5190, 3000, 5432, 1900, 3986, 13, 1029, 9, 5051, 6646, 49157, 1028, 873, 1755, 2717, 4899, 9100, 119 };
+		if (Arrays.asList(knownPorts).contains(dst_port))
+			return false;
 		return true;
 	}
 
