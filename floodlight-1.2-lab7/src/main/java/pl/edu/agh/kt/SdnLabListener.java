@@ -65,14 +65,12 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 		Ethernet eth = extractor.getEth();
 		if (eth.getEtherType() == EthType.IPv4) {
 			IPv4 ipv4 = (IPv4) eth.getPayload();
-			if (ipv4.getProtocol() == IpProtocol.TCF) {
+			if (ipv4.getProtocol() == IpProtocol.TCP) {
 				TCP tcp = (TCP) ipv4.getPayload();
 				String src_ip = ipv4.getSourceAddress().toString();
 				String dst_ip = ipv4.getDestinationAddress().toString();
 				int dst_port = tcp.getDestinationPort().getPort();
 				if (impostorScore.containsKey(src_ip)) {
-					impostorLast10DestIps.get(src_ip).add(dst_ip);
-					impostorLast10Ports.get(src_ip).add(dst_port);
 					if (maliciousPort(dst_port)){
 						impostorScore.put(src_ip, impostorScore.get(src_ip)+1);
 					}
@@ -83,6 +81,9 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 						List<String> newIPsList = impostorLast10DestIps.get(src_ip).subList(1, 10);
 						newIPsList.add(dst_ip);
 						impostorLast10Ports.put(src_ip,newIPsList);
+					} else {
+						impostorLast10DestIps.get(src_ip).add(dst_ip);
+						impostorLast10Ports.get(src_ip).add(dst_port);
 					}
 				} else {
 					impostorScore.put(src_ip, 0);
@@ -95,14 +96,9 @@ public class SdnLabListener implements IFloodlightModule, IOFMessageListener {
 				}
 			}
 		}
-		// TODO LAB 6
+
 		OFPacketIn pin = (OFPacketIn) msg;
-		OFPort outPort = OFPort.of(0);
-		if (pin.getInPort() == OFPort.of(1)) {
-			outPort = OFPort.of(2);
-		} else
-			outPort = OFPort.of(1);
-		Flows.simpleAdd(sw, pin, cntx, outPort);
+		Flows.simpleAdd(sw, pin, cntx, pin.getInPort());
 
 		return Command.STOP;
 	}
