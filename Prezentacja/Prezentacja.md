@@ -22,7 +22,7 @@ Główny element sieci jest rzecz jasna programowalny przełącznik korzystając
 <style scoped>section { justify-content: start; }</style>
 # Topologia  c.d.
 
-Oprócz programowalnego przełącznika zdecydowalismy sie na wykorzystanie czterech hostów , których podzieliliśmy na podgrupy: hosty uprawnione do odczytywania danych z serwera oraz hosty, które chcą dokonać ataku DDoS na ten serwer. Komunikacja odbywa się za pomocą protokołu TCP . Serwers sieciowy nasluchuje na porcie 80.
+Oprócz programowalnego przełącznika zdecydowalismy sie na wykorzystanie czterech hostów, których podzieliliśmy na podgrupy: hosty uprawnione do odczytywania danych z serwera oraz hosty, które chcą dokonać skanowania tego serwera. Komunikacja odbywa się za pomocą protokołu TCP. Serwer sieciowy nasluchuje na porcie 80.
 ![](Topologia.png)
 
 
@@ -37,7 +37,7 @@ Naszym głównym zamysłem podczas tworzenia projektu było stworzenie takiego a
 <style scoped>section { justify-content: start; }</style>
 # Opis kodu 
 
-Nasz kod głównie opiera sie na metodzie recieve , w której to przechwytujemy payload pakietu , nastepnie wyłyskujemy dane na temat adresy źrodłowego , adresu docelowego , portu docelowego. Nastepnie szereg if-ów posłuzyl nam do odpowiedniego odfiltrowania pakietów oraz do ograniczenia dostepów dla niepuprawnionych hostów. 
+Nasz kod głównie opiera sie na metodzie recieve, w której to przechwytujemy payload pakietu, nastepnie wyłuskujemy dane na temat adresy źrodłowego, adresu docelowego, portu docelowego. Nastepnie szereg if-ów posłużył nam do odpowiedniego odfiltrowania pakietów oraz do ograniczenia dostepów dla niepuprawnionych hostów. 
 
 --- 
 <style scoped>section { justify-content: start; }</style>
@@ -55,7 +55,7 @@ if (eth.getEtherType() == EthType.IPv4) {
 ```
 ---
 <style scoped>section { justify-content: start; }</style>
-# Sprawdzenie czy port nalezy do zbioru portów zagrozonych
+# Sprawdzenie czy port należy do zbioru portów zagrożonych
 ```java
 
 if (maliciousPort(dst_port)){
@@ -72,6 +72,27 @@ if (impostorLast10Ports.get(src_ip).size() == 10){
 	HashSet<Integer> set_port = new HashSet<>(impostorLast10Ports.get(src_ip));
 	HashSet<Integer> set_ip = new HashSet<>(impostorLast10DestIps.get(src_ip));
 ```
+
+---
+<style scoped>section { justify-content: start; }</style>
+
+# Uruchmania scenariusza testowego
+
+### Uruchomienie serwera HTTP
+```shell
+python3 -m http.server 80
+```
+
+### Uruchomienie nmapa - skanowanie portów
+```
+nmap -sS -Pn -vv --min-rate=40 --disable-arp-ping -p 1000-1100 10.0.0.2
+```
+
+### Uruchomienie nmapa - skanowanie różnych ip
+```
+nmap -sS -Pn -vv --min-rate=40 --disable-arp-ping -p 80 10.0.0.0/24
+```
+
 
 ---
 
@@ -91,19 +112,13 @@ private boolean maliciousPort(int dst_port) {
 ---
 ![](blokada_www.png)
 
----
-
-```shell
-python3 -m http.server 80
-```
-
-```
-nmap -sS -Pn -vv --disable-arp-ping -p 1000-1100 10.0.0.2
-```
-
-```
-mn --topo single,3
-```
 
 ---
 # Dziękujemy za uwagę 
+
+---
+
+### Zestawienie topologii
+```
+mn --topo single,4
+```
