@@ -1,10 +1,16 @@
 # SDN_project
 
+Projekt ma na celu stworzenie reaktywnego firewalla, który będzie blokował próby skanowania sieci przy użyciu protokołów TCP oraz UDP.
+
+* Wykorzystywany kontroler: [Floodlight](https://floodlight.atlassian.net/wiki/spaces/floodlightcontroller/overview)
+* Wykorzystywane dodatkowe oprogramowanie: [Nmap](https://nmap.org/)
+
+
 ## Uruchomienie
 
 1) Pobierz laboratorium z przedmiotu SDN
 2) Podmień pliki zawierające się w tym repozytorium
-3) Uruchom scenariusz
+3) Uruchom scenariusz z wykorzystaniem poniższych poleceń
 
 
 ### Zestawienie topologii
